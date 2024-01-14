@@ -1,0 +1,17 @@
+type TimeRecord {
+  id: ID!
+  start: String!
+  end: String!
+  tags: [String!]!
+}
+
+type Query {
+  timeRecords: [TimeRecord!]!
+}
+
+type Mutation {
+  timeStart: TimeRecord!
+  timeStop: TimeRecord!
+  deleteTimeRecord(id: ID!): TimeRecord!
+  modifyTimeRecordDate(id: ID!, start: String, end: String): TimeRecord!
+}
