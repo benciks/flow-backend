@@ -50,8 +50,10 @@ type ComplexityRoot struct {
 	Mutation struct {
 		DeleteTimeRecord     func(childComplexity int, id string) int
 		ModifyTimeRecordDate func(childComplexity int, id string, start *string, end *string) int
+		TagTimeRecord        func(childComplexity int, id string, tag string) int
 		TimeStart            func(childComplexity int) int
 		TimeStop             func(childComplexity int) int
+		UntagTimeRecord      func(childComplexity int, id string, tag string) int
 	}
 
 	Query struct {
@@ -71,6 +73,8 @@ type MutationResolver interface {
 	TimeStop(ctx context.Context) (*model.TimeRecord, error)
 	DeleteTimeRecord(ctx context.Context, id string) (*model.TimeRecord, error)
 	ModifyTimeRecordDate(ctx context.Context, id string, start *string, end *string) (*model.TimeRecord, error)
+	TagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error)
+	UntagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error)
 }
 type QueryResolver interface {
 	TimeRecords(ctx context.Context) ([]*model.TimeRecord, error)
@@ -119,6 +123,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.ModifyTimeRecordDate(childComplexity, args["id"].(string), args["start"].(*string), args["end"].(*string)), true
 
+	case "Mutation.tagTimeRecord":
+		if e.complexity.Mutation.TagTimeRecord == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_tagTimeRecord_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TagTimeRecord(childComplexity, args["id"].(string), args["tag"].(string)), true
+
 	case "Mutation.timeStart":
 		if e.complexity.Mutation.TimeStart == nil {
 			break
@@ -132,6 +148,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.TimeStop(childComplexity), true
+
+	case "Mutation.untagTimeRecord":
+		if e.complexity.Mutation.UntagTimeRecord == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_untagTimeRecord_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UntagTimeRecord(childComplexity, args["id"].(string), args["tag"].(string)), true
 
 	case "Query.timeRecords":
 		if e.complexity.Query.TimeRecords == nil {
@@ -336,6 +364,54 @@ func (ec *executionContext) field_Mutation_modifyTimeRecordDate_args(ctx context
 		}
 	}
 	args["end"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_tagTimeRecord_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["tag"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tag"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tag"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_untagTimeRecord_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["tag"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tag"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tag"] = arg1
 	return args, nil
 }
 
@@ -624,6 +700,136 @@ func (ec *executionContext) fieldContext_Mutation_modifyTimeRecordDate(ctx conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_modifyTimeRecordDate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_tagTimeRecord(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_tagTimeRecord(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().TagTimeRecord(rctx, fc.Args["id"].(string), fc.Args["tag"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.TimeRecord)
+	fc.Result = res
+	return ec.marshalNTimeRecord2ᚖgithubᚗcomᚋbenciksᚋflowᚑbackendᚋinternalᚋgraphᚋmodelᚐTimeRecord(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_tagTimeRecord(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_TimeRecord_id(ctx, field)
+			case "start":
+				return ec.fieldContext_TimeRecord_start(ctx, field)
+			case "end":
+				return ec.fieldContext_TimeRecord_end(ctx, field)
+			case "tags":
+				return ec.fieldContext_TimeRecord_tags(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TimeRecord", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_tagTimeRecord_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_untagTimeRecord(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_untagTimeRecord(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UntagTimeRecord(rctx, fc.Args["id"].(string), fc.Args["tag"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.TimeRecord)
+	fc.Result = res
+	return ec.marshalNTimeRecord2ᚖgithubᚗcomᚋbenciksᚋflowᚑbackendᚋinternalᚋgraphᚋmodelᚐTimeRecord(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_untagTimeRecord(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_TimeRecord_id(ctx, field)
+			case "start":
+				return ec.fieldContext_TimeRecord_start(ctx, field)
+			case "end":
+				return ec.fieldContext_TimeRecord_end(ctx, field)
+			case "tags":
+				return ec.fieldContext_TimeRecord_tags(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TimeRecord", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_untagTimeRecord_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2813,6 +3019,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "modifyTimeRecordDate":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_modifyTimeRecordDate(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tagTimeRecord":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_tagTimeRecord(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "untagTimeRecord":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_untagTimeRecord(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

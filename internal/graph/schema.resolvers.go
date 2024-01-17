@@ -33,6 +33,7 @@ func (r *mutationResolver) TimeStart(ctx context.Context) (*model.TimeRecord, er
 		ID:    "0",
 		Start: timeRecord[0].Start,
 		End:   timeRecord[0].End,
+		Tags:  timeRecord[0].Tags,
 	}, nil
 }
 
@@ -55,6 +56,7 @@ func (r *mutationResolver) TimeStop(ctx context.Context) (*model.TimeRecord, err
 		ID:    "0",
 		Start: timeRecord[0].Start,
 		End:   timeRecord[0].End,
+		Tags:  timeRecord[0].Tags,
 	}, nil
 }
 
@@ -79,6 +81,7 @@ func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id string) (*mo
 		ID:    "-1",
 		Start: timeRecord[0].Start,
 		End:   timeRecord[0].End,
+		Tags:  timeRecord[0].Tags,
 	}, nil
 }
 
@@ -114,6 +117,53 @@ func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id string, 
 		ID:    id,
 		Start: timeRecord[0].Start,
 		End:   timeRecord[0].End,
+		Tags:  timeRecord[0].Tags,
+	}, nil
+}
+
+// TagTimeRecord is the resolver for the tagTimeRecord field.
+func (r *mutationResolver) TagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error) {
+	cmd, err := exec.Command("timew", "tag", "@"+id, tag).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd, err = exec.Command("timew", "export", "@"+id).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var timeRecord []TimeExport
+	err = json.Unmarshal(cmd, &timeRecord)
+
+	return &model.TimeRecord{
+		ID:    id,
+		Start: timeRecord[0].Start,
+		End:   timeRecord[0].End,
+		Tags:  timeRecord[0].Tags,
+	}, nil
+}
+
+// UntagTimeRecord is the resolver for the untagTimeRecord field.
+func (r *mutationResolver) UntagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error) {
+	cmd, err := exec.Command("timew", "untag", "@"+id, tag).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd, err = exec.Command("timew", "export", "@"+id).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var timeRecord []TimeExport
+	err = json.Unmarshal(cmd, &timeRecord)
+
+	return &model.TimeRecord{
+		ID:    id,
+		Start: timeRecord[0].Start,
+		End:   timeRecord[0].End,
+		Tags:  timeRecord[0].Tags,
 	}, nil
 }
 
@@ -171,4 +221,5 @@ type TimeExport struct {
 	Id    int
 	Start string
 	End   string
+	Tags  []string
 }
