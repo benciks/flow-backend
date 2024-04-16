@@ -5,8 +5,25 @@ type TimeRecord {
   tags: [String!]!
 }
 
+type Task {
+  id: ID!
+  description: String!
+  entry: String!
+  modified: String!
+  uuid: String!
+  urgency: Float!
+  status: String!
+  priority: String!
+  due: String!
+  project: String!
+  tags: [String!]!
+}
+
 type Query {
   timeRecords: [TimeRecord!]!
+  timeTags: [String!]!
+
+  tasks: [Task!]!
 }
 
 type Mutation {
@@ -16,4 +33,6 @@ type Mutation {
   modifyTimeRecordDate(id: ID!, start: String, end: String): TimeRecord!
   tagTimeRecord(id: ID!, tag: String!): TimeRecord!
   untagTimeRecord(id: ID!, tag: String!): TimeRecord!
+
+  createTask(description: String!, project: String, priority: String, due: String): Task!
 }
