@@ -2,6 +2,21 @@
 
 package model
 
+import (
+	"github.com/benciks/flow-backend/internal/database/db"
+)
+
+type Mutation struct {
+}
+
+type Query struct {
+}
+
+type SignInPayload struct {
+	Token string   `json:"token"`
+	User  *db.User `json:"user"`
+}
+
 type Task struct {
 	ID          string   `json:"id"`
 	Description string   `json:"description"`
