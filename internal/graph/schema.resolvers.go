@@ -6,11 +6,15 @@ package graph
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/benciks/flow-backend/internal/util"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -62,6 +66,11 @@ func (r *mutationResolver) TimeStop(ctx context.Context) (*model.TimeRecord, err
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	defer func() {
+		go util.SyncTimewarrior(ctx)
+	}()
+
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
@@ -95,6 +104,11 @@ func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id string) (*mo
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	defer func() {
+		go util.SyncTimewarrior(ctx)
+	}()
+
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
@@ -131,6 +145,11 @@ func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id string, 
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	defer func() {
+		go util.SyncTimewarrior(ctx)
+	}()
+
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
@@ -181,6 +200,11 @@ func (r *mutationResolver) TagTimeRecord(ctx context.Context, id string, tag str
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	defer func() {
+		go util.SyncTimewarrior(ctx)
+	}()
+
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
@@ -214,6 +238,11 @@ func (r *mutationResolver) UntagTimeRecord(ctx context.Context, id string, tag s
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	defer func() {
+		go util.SyncTimewarrior(ctx)
+	}()
+
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
@@ -247,6 +276,11 @@ func (r *mutationResolver) CreateTask(ctx context.Context, description string, p
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	// Sync after the task is created
+	defer func() {
+		util.SyncTasks(ctx)
+	}()
 
 	// Set the environment variable for the task commands
 	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))
@@ -362,11 +396,219 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 		}
 	}
 
+	// Create a taskwarrior config file for the user
+	if _, err := os.Stat("./data/taskwarrior/" + strconv.FormatInt(user.ID, 10) + "/taskrc"); os.IsNotExist(err) {
+		if _, err := os.Create("./data/taskwarrior/" + strconv.FormatInt(user.ID, 10) + "/taskrc"); err != nil {
+			return nil, err
+		}
+	}
+
 	// Create a timewarrior data folder for the user
 	if _, err := os.Stat("./data/timewarrior/" + strconv.FormatInt(user.ID, 10)); os.IsNotExist(err) {
 		if err := os.Mkdir("./data/timewarrior/"+strconv.FormatInt(user.ID, 10), 0755); err != nil {
 			return nil, err
 		}
+	}
+
+	// Create a timew config file for the user
+	if _, err := os.Stat("./data/timewarrior/" + strconv.FormatInt(user.ID, 10) + "/timewsync.cfg"); os.IsNotExist(err) {
+		if _, err := os.Create("./data/timewarrior/" + strconv.FormatInt(user.ID, 10) + "/timewsync.cfg"); err != nil {
+			return nil, err
+		}
+	}
+
+	// Generate taskserver user
+	cmd := exec.Command("taskd", "add", "user", "Public", username)
+	cmd.Env = os.Environ()
+	cmdOutput, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract user uuid from output
+	var userUUID string
+	_, err = fmt.Sscanf(string(cmdOutput), "New user key: %s\nCreated user", &userUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = r.DB.SaveUserUUID(ctx, db.SaveUserUUIDParams{
+		ID:   user.ID,
+		Uuid: sql.NullString{String: userUUID},
+	})
+
+	// Generate keys for the user
+	cmdDir := filepath.Join(os.Getenv("TASKDDATA"), "pki")
+	cmd = exec.Command(fmt.Sprintf("%s/pki/generate.client", os.Getenv("TASKDDATA")), username)
+	cmd.Dir = cmdDir
+	cmd.Env = os.Environ()
+	_, err = cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Copy the generated keys to the user's folder
+	cmd = exec.Command("cp", fmt.Sprintf("%s/%s.cert.pem", cmdDir, username), fmt.Sprintf("./data/taskwarrior/%d/%s.cert.pem", user.ID, username))
+	_, err = cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+	cmd = exec.Command("cp", fmt.Sprintf("%s/%s.key.pem", cmdDir, username), fmt.Sprintf("./data/taskwarrior/%d/%s.key.pem", user.ID, username))
+	_, err = cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Copy the ca.cert.pem to the user's folder
+	cmd = exec.Command("cp", fmt.Sprintf("%s/ca.cert.pem", cmdDir), fmt.Sprintf("./data/taskwarrior/%d/ca.cert.pem", user.ID))
+	_, err = cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	// Setup taskwarrior for the user
+	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))
+	env = append(env, "TASKRC=./data/taskwarrior/"+strconv.FormatInt(user.ID, 10)+"/taskrc")
+	env = append(env, "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
+
+	cmd = exec.Command("task", "config", "taskd.server", os.Getenv("TASKD_SERVER"))
+	cmd.Env = env
+	stdin, _ := cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd = exec.Command("task", "config", "taskd.credentials", "Public/"+username+"/"+userUUID)
+	cmd.Env = env
+	stdin, _ = cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd = exec.Command("task", "config", "taskd.key", fmt.Sprintf("./data/taskwarrior/%d/%s.key.pem", user.ID, username))
+	cmd.Env = env
+	stdin, _ = cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd = exec.Command("task", "config", "taskd.certificate", fmt.Sprintf("./data/taskwarrior/%d/%s.cert.pem", user.ID, username))
+	cmd.Env = env
+	stdin, _ = cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	cmd = exec.Command("task", "config", "taskd.ca", fmt.Sprintf("./data/taskwarrior/%d/ca.cert.pem", user.ID))
+	cmd.Env = env
+	stdin, _ = cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	// Sync the user
+	cmd = exec.Command("task", "sync", "init")
+	cmd.Env = env
+	stdin, _ = cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	// Setup timewsync for user
+	// Create user server side
+	cmdDir = os.Getenv("TIMEW_SYNC")
+	cmd = exec.Command("./timew-server", "add-user", username)
+	cmd.Dir = cmdDir
+	cmd.Env = os.Environ()
+	out, err := cmd.CombinedOutput()
+
+	// Parse the id from the output
+	var id string
+	_, err = fmt.Sscanf(string(out), "Successfully added new user %s\n", &id)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedID, err := strconv.ParseInt(id, 10, 64)
+
+	// Save the id to the user
+	_, err = r.DB.SaveTimewID(ctx, db.SaveTimewIDParams{
+		ID:      user.ID,
+		TimewID: sql.NullInt64{Int64: parsedID, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Add configuration to the timewsync.cfg file
+	timewsyncCfg, err := os.OpenFile("./data/timewarrior/"+strconv.FormatInt(user.ID, 10)+"/timewsync.conf", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = timewsyncCfg.WriteString("[Server]\n")
+	_, err = timewsyncCfg.WriteString(fmt.Sprintf("BaseURL=%s\n", os.Getenv("TIMEW_SERVER")))
+
+	_, err = timewsyncCfg.WriteString("[Client]\n")
+	_, err = timewsyncCfg.WriteString(fmt.Sprintf("UserID=%s\n", id))
+
+	// Generate user keys
+	cmd = exec.Command("timewsync", "--data-dir", "./data/timewarrior/"+strconv.FormatInt(user.ID, 10), "generate-key")
+	cmd.Env = os.Environ()
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	// Add the user key to the server
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	cmd = exec.Command("timew-server", "add-key", "--path", currentDir+"/data/timewarrior/"+strconv.FormatInt(user.ID, 10)+"/public_key.pem", "--id", strconv.FormatInt(parsedID, 10))
+	cmd.Dir = cmdDir
+	cmd.Env = os.Environ()
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	// Sync the user
+	cmd = exec.Command("timewsync", "--data-dir", "./data/timewarrior/"+strconv.FormatInt(user.ID, 10), "-v")
+	cmd.Env = os.Environ()
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, err
 	}
 
 	return &model.SignInPayload{
@@ -396,6 +638,10 @@ func (r *queryResolver) TimeRecords(ctx context.Context) ([]*model.TimeRecord, e
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	defer func() {
+		go util.SyncTimewarrior(ctx)
+	}()
 
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
@@ -460,6 +706,10 @@ func (r *queryResolver) Tasks(ctx context.Context) ([]*model.Task, error) {
 	if !ok {
 		return nil, msg.ErrUnauthorized
 	}
+
+	defer func() {
+		go util.SyncTasks(ctx)
+	}()
 
 	// Set the environment variable for the task commands
 	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))

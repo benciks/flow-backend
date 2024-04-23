@@ -12,10 +12,11 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/joho/godotenv"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const defaultPort = "8080"
+const defaultPort = "3000"
 
 func main() {
 	port := os.Getenv("PORT")
@@ -48,6 +49,12 @@ func main() {
 		}
 	}
 
+	if _, err := os.Stat("./data/authorized_keys"); os.IsNotExist(err) {
+		if err := os.Mkdir("./data/authorized_keys", 0755); err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	if _, err := os.Stat("./data/timewarrior"); os.IsNotExist(err) {
 		if err := os.Mkdir("./data/timewarrior", 0755); err != nil {
 			log.Fatal(err)
@@ -58,6 +65,12 @@ func main() {
 		if err := os.Mkdir("./data/taskwarrior", 0755); err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	// Load environment variables
+	err = godotenv.Load()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	queries := db.New(conn)

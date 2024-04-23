@@ -7,10 +7,11 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (password, username) VALUES (?1, ?2) RETURNING id, username, password, created_at
+INSERT INTO users (password, username) VALUES (?1, ?2) RETURNING id, username, password, created_at, taskd_uuid, timew_id
 `
 
 type CreateUserParams struct {
@@ -26,12 +27,14 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Username,
 		&i.Password,
 		&i.CreatedAt,
+		&i.TaskdUuid,
+		&i.TimewID,
 	)
 	return i, err
 }
 
 const findUserById = `-- name: FindUserById :one
-SELECT id, username, password, created_at FROM users WHERE id = ?1
+SELECT id, username, password, created_at, taskd_uuid, timew_id FROM users WHERE id = ?1
 `
 
 func (q *Queries) FindUserById(ctx context.Context, id int64) (User, error) {
@@ -42,12 +45,14 @@ func (q *Queries) FindUserById(ctx context.Context, id int64) (User, error) {
 		&i.Username,
 		&i.Password,
 		&i.CreatedAt,
+		&i.TaskdUuid,
+		&i.TimewID,
 	)
 	return i, err
 }
 
 const findUserByUsername = `-- name: FindUserByUsername :one
-SELECT id, username, password, created_at FROM users WHERE username = ?1
+SELECT id, username, password, created_at, taskd_uuid, timew_id FROM users WHERE username = ?1
 `
 
 func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User, error) {
@@ -58,12 +63,14 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User
 		&i.Username,
 		&i.Password,
 		&i.CreatedAt,
+		&i.TaskdUuid,
+		&i.TimewID,
 	)
 	return i, err
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, username, password, created_at FROM users
+SELECT id, username, password, created_at, taskd_uuid, timew_id FROM users
 `
 
 func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
@@ -80,6 +87,8 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 			&i.Username,
 			&i.Password,
 			&i.CreatedAt,
+			&i.TaskdUuid,
+			&i.TimewID,
 		); err != nil {
 			return nil, err
 		}
@@ -92,4 +101,50 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const saveTimewID = `-- name: SaveTimewID :one
+UPDATE users SET timew_id = ?1 WHERE id = ?2 RETURNING id, username, password, created_at, taskd_uuid, timew_id
+`
+
+type SaveTimewIDParams struct {
+	TimewID sql.NullInt64 `db:"timew_id"`
+	ID      int64         `db:"id"`
+}
+
+func (q *Queries) SaveTimewID(ctx context.Context, arg SaveTimewIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, saveTimewID, arg.TimewID, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.CreatedAt,
+		&i.TaskdUuid,
+		&i.TimewID,
+	)
+	return i, err
+}
+
+const saveUserUUID = `-- name: SaveUserUUID :one
+UPDATE users SET taskd_uuid = ?1 WHERE id = ?2 RETURNING id, username, password, created_at, taskd_uuid, timew_id
+`
+
+type SaveUserUUIDParams struct {
+	Uuid sql.NullString `db:"uuid"`
+	ID   int64          `db:"id"`
+}
+
+func (q *Queries) SaveUserUUID(ctx context.Context, arg SaveUserUUIDParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, saveUserUUID, arg.Uuid, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.CreatedAt,
+		&i.TaskdUuid,
+		&i.TimewID,
+	)
+	return i, err
 }

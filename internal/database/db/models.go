@@ -16,8 +16,10 @@ type Session struct {
 }
 
 type User struct {
-	ID        int64        `db:"id"`
-	Username  string       `db:"username"`
-	Password  string       `db:"password"`
-	CreatedAt sql.NullTime `db:"created_at"`
+	ID        int64          `db:"id"`
+	Username  string         `db:"username"`
+	Password  string         `db:"password"`
+	CreatedAt sql.NullTime   `db:"created_at"`
+	TaskdUuid sql.NullString `db:"taskd_uuid"`
+	TimewID   sql.NullInt64  `db:"timew_id"`
 }
