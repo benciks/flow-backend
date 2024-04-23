@@ -7,6 +7,7 @@ import (
 	graph2 "github.com/benciks/flow-backend/internal/graph"
 	"github.com/benciks/flow-backend/internal/middleware"
 	"github.com/labstack/echo/v4"
+	em "github.com/labstack/echo/v4/middleware"
 	"log"
 	"os"
 
@@ -77,6 +78,7 @@ func main() {
 
 	e := echo.New()
 	e.Use(middleware.Auth(queries))
+	e.Use(em.CORS())
 
 	srv := handler.NewDefaultServer(graph2.NewExecutableSchema(graph2.Config{Resolvers: &graph2.Resolver{
 		DB: queries,
