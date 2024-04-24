@@ -652,6 +652,18 @@ func (r *mutationResolver) DownloadTaskKeys(ctx context.Context) (string, error)
 	}
 	defer ca.Close()
 
+	cert, err := os.OpenFile(fmt.Sprintf("./data/taskwarrior/%d/%s.cert.pem", user.ID, user.Username), os.O_RDONLY, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer cert.Close()
+
+	key, err := os.OpenFile(fmt.Sprintf("./data/taskwarrior/%d/%s.key.pem", user.ID, user.Username), os.O_RDONLY, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer key.Close()
+
 	// Create a buffer to store the zipped keys
 	var buf bytes.Buffer
 
@@ -664,6 +676,8 @@ func (r *mutationResolver) DownloadTaskKeys(ctx context.Context) (string, error)
 		File *os.File
 	}{
 		{"ca.cert.pem", ca},
+		{fmt.Sprintf("%s.cert.pem", user.Username), cert},
+		{fmt.Sprintf("%s.key.pem", user.Username), key},
 	}
 
 	for _, file := range files {
