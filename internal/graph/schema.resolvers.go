@@ -333,6 +333,64 @@ func (r *mutationResolver) CreateTask(ctx context.Context, description string, p
 	}, nil
 }
 
+// MarkTaskDone is the resolver for the markTaskDone field.
+func (r *mutationResolver) MarkTaskDone(ctx context.Context, id string) (*model.Task, error) {
+	user, ok := middleware.GetUser(ctx)
+	if !ok {
+		return nil, msg.ErrUnauthorized
+	}
+
+	// Sync after the task is marked done
+	defer func() {
+		util.SyncTasks(ctx)
+	}()
+
+	// Set the environment variable for the task commands
+	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))
+	env = append(env, "TASKRC=./data/taskwarrior/"+strconv.FormatInt(user.ID, 10)+"/taskrc")
+
+	tasks := exec.Command("task", "export")
+	tasks.Env = env
+	tasksOutput, err := tasks.Output()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var taskExport []TaskExport
+	err = json.Unmarshal(tasksOutput, &taskExport)
+
+	// Find the task with the given id
+	var task TaskExport
+	for _, t := range taskExport {
+		if strconv.Itoa(t.Id) == id {
+			task = t
+			break
+		}
+	}
+
+	cmd := exec.Command("task", "done", id)
+	cmd.Env = env
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+
+	// TODO: Cannot we make this nicer?
+	return &model.Task{
+		ID:          strconv.Itoa(task.Id),
+		Description: task.Description,
+		Entry:       task.Entry,
+		Modified:    task.Modified,
+		UUID:        task.UUID,
+		Urgency:     task.Urgency,
+		Status:      "completed",
+		Priority:    task.Priority,
+		Due:         task.Due,
+		Project:     task.Project,
+		Tags:        task.Tags,
+	}, nil
+}
+
 // SignIn is the resolver for the signIn field.
 func (r *mutationResolver) SignIn(ctx context.Context, username string, password string) (*model.SignInPayload, error) {
 	user, err := r.DB.FindUserByUsername(ctx, username)

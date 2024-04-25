@@ -54,6 +54,7 @@ type ComplexityRoot struct {
 		CreateTask           func(childComplexity int, description string, project *string, priority *string, due *string) int
 		DeleteTimeRecord     func(childComplexity int, id string) int
 		DownloadTaskKeys     func(childComplexity int) int
+		MarkTaskDone         func(childComplexity int, id string) int
 		ModifyTimeRecordDate func(childComplexity int, id string, start *string, end *string) int
 		SignIn               func(childComplexity int, username string, password string) int
 		SignOut              func(childComplexity int) int
@@ -114,6 +115,7 @@ type MutationResolver interface {
 	TagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error)
 	UntagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error)
 	CreateTask(ctx context.Context, description string, project *string, priority *string, due *string) (*model.Task, error)
+	MarkTaskDone(ctx context.Context, id string) (*model.Task, error)
 	SignIn(ctx context.Context, username string, password string) (*model.SignInPayload, error)
 	SignUp(ctx context.Context, username string, password string) (*model.SignInPayload, error)
 	SignOut(ctx context.Context) (bool, error)
@@ -179,6 +181,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DownloadTaskKeys(childComplexity), true
+
+	case "Mutation.markTaskDone":
+		if e.complexity.Mutation.MarkTaskDone == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_markTaskDone_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.MarkTaskDone(childComplexity, args["id"].(string)), true
 
 	case "Mutation.modifyTimeRecordDate":
 		if e.complexity.Mutation.ModifyTimeRecordDate == nil {
@@ -614,6 +628,21 @@ func (ec *executionContext) field_Mutation_createTask_args(ctx context.Context, 
 }
 
 func (ec *executionContext) field_Mutation_deleteTimeRecord_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_markTaskDone_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 string
@@ -1266,6 +1295,85 @@ func (ec *executionContext) fieldContext_Mutation_createTask(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_markTaskDone(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_markTaskDone(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().MarkTaskDone(rctx, fc.Args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Task)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋbenciksᚋflowᚑbackendᚋinternalᚋgraphᚋmodelᚐTask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_markTaskDone(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "description":
+				return ec.fieldContext_Task_description(ctx, field)
+			case "entry":
+				return ec.fieldContext_Task_entry(ctx, field)
+			case "modified":
+				return ec.fieldContext_Task_modified(ctx, field)
+			case "uuid":
+				return ec.fieldContext_Task_uuid(ctx, field)
+			case "urgency":
+				return ec.fieldContext_Task_urgency(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "due":
+				return ec.fieldContext_Task_due(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_markTaskDone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4665,6 +4773,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "createTask":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createTask(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "markTaskDone":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_markTaskDone(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
