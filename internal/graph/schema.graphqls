@@ -52,6 +52,8 @@ type Mutation {
 
   createTask(description: String!, project: String, priority: String, due: String): Task!
   markTaskDone(id: ID!): Task!
+  editTask(id: ID!, description: String, project: String, priority: String, due: String, tags: [String]): Task!
+  deleteTask(id: ID!): Task!
 
   signIn(username: String!, password: String!): SignInPayload!
   signUp(username: String!, password: String!): SignInPayload!

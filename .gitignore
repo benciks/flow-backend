@@ -3,3 +3,4 @@
 data/
 flow.db
 .env
+app/release

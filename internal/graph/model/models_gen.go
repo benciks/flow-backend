@@ -18,7 +18,7 @@ type SignInPayload struct {
 }
 
 type Task struct {
-	ID          string   `json:"id"`
+	ID          int      `json:"id"`
 	Description string   `json:"description"`
 	Entry       string   `json:"entry"`
 	Modified    string   `json:"modified"`
@@ -32,7 +32,7 @@ type Task struct {
 }
 
 type TimeRecord struct {
-	ID    string   `json:"id"`
+	ID    int      `json:"id"`
 	Start string   `json:"start"`
 	End   string   `json:"end"`
 	Tags  []string `json:"tags"`

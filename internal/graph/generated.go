@@ -52,17 +52,19 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Mutation struct {
 		CreateTask           func(childComplexity int, description string, project *string, priority *string, due *string) int
-		DeleteTimeRecord     func(childComplexity int, id string) int
+		DeleteTask           func(childComplexity int, id int) int
+		DeleteTimeRecord     func(childComplexity int, id int) int
 		DownloadTaskKeys     func(childComplexity int) int
-		MarkTaskDone         func(childComplexity int, id string) int
-		ModifyTimeRecordDate func(childComplexity int, id string, start *string, end *string) int
+		EditTask             func(childComplexity int, id int, description *string, project *string, priority *string, due *string, tags []*string) int
+		MarkTaskDone         func(childComplexity int, id int) int
+		ModifyTimeRecordDate func(childComplexity int, id int, start *string, end *string) int
 		SignIn               func(childComplexity int, username string, password string) int
 		SignOut              func(childComplexity int) int
 		SignUp               func(childComplexity int, username string, password string) int
-		TagTimeRecord        func(childComplexity int, id string, tag string) int
+		TagTimeRecord        func(childComplexity int, id int, tag string) int
 		TimeStart            func(childComplexity int) int
 		TimeStop             func(childComplexity int) int
-		UntagTimeRecord      func(childComplexity int, id string, tag string) int
+		UntagTimeRecord      func(childComplexity int, id int, tag string) int
 		UploadTimeWarriorKey func(childComplexity int, key string) int
 	}
 
@@ -110,12 +112,14 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	TimeStart(ctx context.Context) (*model.TimeRecord, error)
 	TimeStop(ctx context.Context) (*model.TimeRecord, error)
-	DeleteTimeRecord(ctx context.Context, id string) (*model.TimeRecord, error)
-	ModifyTimeRecordDate(ctx context.Context, id string, start *string, end *string) (*model.TimeRecord, error)
-	TagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error)
-	UntagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error)
+	DeleteTimeRecord(ctx context.Context, id int) (*model.TimeRecord, error)
+	ModifyTimeRecordDate(ctx context.Context, id int, start *string, end *string) (*model.TimeRecord, error)
+	TagTimeRecord(ctx context.Context, id int, tag string) (*model.TimeRecord, error)
+	UntagTimeRecord(ctx context.Context, id int, tag string) (*model.TimeRecord, error)
 	CreateTask(ctx context.Context, description string, project *string, priority *string, due *string) (*model.Task, error)
-	MarkTaskDone(ctx context.Context, id string) (*model.Task, error)
+	MarkTaskDone(ctx context.Context, id int) (*model.Task, error)
+	EditTask(ctx context.Context, id int, description *string, project *string, priority *string, due *string, tags []*string) (*model.Task, error)
+	DeleteTask(ctx context.Context, id int) (*model.Task, error)
 	SignIn(ctx context.Context, username string, password string) (*model.SignInPayload, error)
 	SignUp(ctx context.Context, username string, password string) (*model.SignInPayload, error)
 	SignOut(ctx context.Context) (bool, error)
@@ -163,6 +167,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CreateTask(childComplexity, args["description"].(string), args["project"].(*string), args["priority"].(*string), args["due"].(*string)), true
 
+	case "Mutation.deleteTask":
+		if e.complexity.Mutation.DeleteTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteTask_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteTask(childComplexity, args["id"].(int)), true
+
 	case "Mutation.deleteTimeRecord":
 		if e.complexity.Mutation.DeleteTimeRecord == nil {
 			break
@@ -173,7 +189,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteTimeRecord(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.DeleteTimeRecord(childComplexity, args["id"].(int)), true
 
 	case "Mutation.downloadTaskKeys":
 		if e.complexity.Mutation.DownloadTaskKeys == nil {
@@ -181,6 +197,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DownloadTaskKeys(childComplexity), true
+
+	case "Mutation.editTask":
+		if e.complexity.Mutation.EditTask == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_editTask_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.EditTask(childComplexity, args["id"].(int), args["description"].(*string), args["project"].(*string), args["priority"].(*string), args["due"].(*string), args["tags"].([]*string)), true
 
 	case "Mutation.markTaskDone":
 		if e.complexity.Mutation.MarkTaskDone == nil {
@@ -192,7 +220,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.MarkTaskDone(childComplexity, args["id"].(string)), true
+		return e.complexity.Mutation.MarkTaskDone(childComplexity, args["id"].(int)), true
 
 	case "Mutation.modifyTimeRecordDate":
 		if e.complexity.Mutation.ModifyTimeRecordDate == nil {
@@ -204,7 +232,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.ModifyTimeRecordDate(childComplexity, args["id"].(string), args["start"].(*string), args["end"].(*string)), true
+		return e.complexity.Mutation.ModifyTimeRecordDate(childComplexity, args["id"].(int), args["start"].(*string), args["end"].(*string)), true
 
 	case "Mutation.signIn":
 		if e.complexity.Mutation.SignIn == nil {
@@ -247,7 +275,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.TagTimeRecord(childComplexity, args["id"].(string), args["tag"].(string)), true
+		return e.complexity.Mutation.TagTimeRecord(childComplexity, args["id"].(int), args["tag"].(string)), true
 
 	case "Mutation.timeStart":
 		if e.complexity.Mutation.TimeStart == nil {
@@ -273,7 +301,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.UntagTimeRecord(childComplexity, args["id"].(string), args["tag"].(string)), true
+		return e.complexity.Mutation.UntagTimeRecord(childComplexity, args["id"].(int), args["tag"].(string)), true
 
 	case "Mutation.uploadTimeWarriorKey":
 		if e.complexity.Mutation.UploadTimeWarriorKey == nil {
@@ -627,13 +655,13 @@ func (ec *executionContext) field_Mutation_createTask_args(ctx context.Context, 
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_deleteTimeRecord_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Mutation_deleteTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 int
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -642,13 +670,88 @@ func (ec *executionContext) field_Mutation_deleteTimeRecord_args(ctx context.Con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_deleteTimeRecord_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_editTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 int
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	var arg1 *string
+	if tmp, ok := rawArgs["description"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+		arg1, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["description"] = arg1
+	var arg2 *string
+	if tmp, ok := rawArgs["project"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("project"))
+		arg2, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["project"] = arg2
+	var arg3 *string
+	if tmp, ok := rawArgs["priority"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("priority"))
+		arg3, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["priority"] = arg3
+	var arg4 *string
+	if tmp, ok := rawArgs["due"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("due"))
+		arg4, err = ec.unmarshalOString2ᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["due"] = arg4
+	var arg5 []*string
+	if tmp, ok := rawArgs["tags"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tags"))
+		arg5, err = ec.unmarshalOString2ᚕᚖstring(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["tags"] = arg5
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_markTaskDone_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 int
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -660,10 +763,10 @@ func (ec *executionContext) field_Mutation_markTaskDone_args(ctx context.Context
 func (ec *executionContext) field_Mutation_modifyTimeRecordDate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 int
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -741,10 +844,10 @@ func (ec *executionContext) field_Mutation_signUp_args(ctx context.Context, rawA
 func (ec *executionContext) field_Mutation_tagTimeRecord_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 int
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -765,10 +868,10 @@ func (ec *executionContext) field_Mutation_tagTimeRecord_args(ctx context.Contex
 func (ec *executionContext) field_Mutation_untagTimeRecord_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 string
+	var arg0 int
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		arg0, err = ec.unmarshalNID2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -976,7 +1079,7 @@ func (ec *executionContext) _Mutation_deleteTimeRecord(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteTimeRecord(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Mutation().DeleteTimeRecord(rctx, fc.Args["id"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1041,7 +1144,7 @@ func (ec *executionContext) _Mutation_modifyTimeRecordDate(ctx context.Context, 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().ModifyTimeRecordDate(rctx, fc.Args["id"].(string), fc.Args["start"].(*string), fc.Args["end"].(*string))
+		return ec.resolvers.Mutation().ModifyTimeRecordDate(rctx, fc.Args["id"].(int), fc.Args["start"].(*string), fc.Args["end"].(*string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1106,7 +1209,7 @@ func (ec *executionContext) _Mutation_tagTimeRecord(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().TagTimeRecord(rctx, fc.Args["id"].(string), fc.Args["tag"].(string))
+		return ec.resolvers.Mutation().TagTimeRecord(rctx, fc.Args["id"].(int), fc.Args["tag"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1171,7 +1274,7 @@ func (ec *executionContext) _Mutation_untagTimeRecord(ctx context.Context, field
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UntagTimeRecord(rctx, fc.Args["id"].(string), fc.Args["tag"].(string))
+		return ec.resolvers.Mutation().UntagTimeRecord(rctx, fc.Args["id"].(int), fc.Args["tag"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1315,7 +1418,7 @@ func (ec *executionContext) _Mutation_markTaskDone(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().MarkTaskDone(rctx, fc.Args["id"].(string))
+		return ec.resolvers.Mutation().MarkTaskDone(rctx, fc.Args["id"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1374,6 +1477,164 @@ func (ec *executionContext) fieldContext_Mutation_markTaskDone(ctx context.Conte
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_markTaskDone_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_editTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_editTask(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().EditTask(rctx, fc.Args["id"].(int), fc.Args["description"].(*string), fc.Args["project"].(*string), fc.Args["priority"].(*string), fc.Args["due"].(*string), fc.Args["tags"].([]*string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Task)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋbenciksᚋflowᚑbackendᚋinternalᚋgraphᚋmodelᚐTask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_editTask(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "description":
+				return ec.fieldContext_Task_description(ctx, field)
+			case "entry":
+				return ec.fieldContext_Task_entry(ctx, field)
+			case "modified":
+				return ec.fieldContext_Task_modified(ctx, field)
+			case "uuid":
+				return ec.fieldContext_Task_uuid(ctx, field)
+			case "urgency":
+				return ec.fieldContext_Task_urgency(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "due":
+				return ec.fieldContext_Task_due(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_editTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteTask(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteTask(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteTask(rctx, fc.Args["id"].(int))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Task)
+	fc.Result = res
+	return ec.marshalNTask2ᚖgithubᚗcomᚋbenciksᚋflowᚑbackendᚋinternalᚋgraphᚋmodelᚐTask(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteTask(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Task_id(ctx, field)
+			case "description":
+				return ec.fieldContext_Task_description(ctx, field)
+			case "entry":
+				return ec.fieldContext_Task_entry(ctx, field)
+			case "modified":
+				return ec.fieldContext_Task_modified(ctx, field)
+			case "uuid":
+				return ec.fieldContext_Task_uuid(ctx, field)
+			case "urgency":
+				return ec.fieldContext_Task_urgency(ctx, field)
+			case "status":
+				return ec.fieldContext_Task_status(ctx, field)
+			case "priority":
+				return ec.fieldContext_Task_priority(ctx, field)
+			case "due":
+				return ec.fieldContext_Task_due(ctx, field)
+			case "project":
+				return ec.fieldContext_Task_project(ctx, field)
+			case "tags":
+				return ec.fieldContext_Task_tags(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Task", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteTask_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2118,9 +2379,9 @@ func (ec *executionContext) _Task_id(ctx context.Context, field graphql.Collecte
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Task_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -2602,9 +2863,9 @@ func (ec *executionContext) _TimeRecord_id(ctx context.Context, field graphql.Co
 		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(int)
 	fc.Result = res
-	return ec.marshalNID2string(ctx, field.Selections, res)
+	return ec.marshalNID2int(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_TimeRecord_id(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -4784,6 +5045,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "editTask":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_editTask(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteTask":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteTask(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "signIn":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_signIn(ctx, field)
@@ -5608,13 +5883,13 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
-func (ec *executionContext) unmarshalNID2int64(ctx context.Context, v interface{}) (int64, error) {
-	res, err := graphql.UnmarshalInt64(v)
+func (ec *executionContext) unmarshalNID2int(ctx context.Context, v interface{}) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNID2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
-	res := graphql.MarshalInt64(v)
+func (ec *executionContext) marshalNID2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	res := graphql.MarshalInt(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -5623,13 +5898,13 @@ func (ec *executionContext) marshalNID2int64(ctx context.Context, sel ast.Select
 	return res
 }
 
-func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
-	res, err := graphql.UnmarshalID(v)
+func (ec *executionContext) unmarshalNID2int64(ctx context.Context, v interface{}) (int64, error) {
+	res, err := graphql.UnmarshalInt64(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	res := graphql.MarshalID(v)
+func (ec *executionContext) marshalNID2int64(ctx context.Context, sel ast.SelectionSet, v int64) graphql.Marshaler {
+	res := graphql.MarshalInt64(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -6142,6 +6417,38 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 	}
 	res := graphql.MarshalBoolean(*v)
 	return res
+}
+
+func (ec *executionContext) unmarshalOString2ᚕᚖstring(ctx context.Context, v interface{}) ([]*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*string, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalOString2ᚖstring(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOString2ᚕᚖstring(ctx context.Context, sel ast.SelectionSet, v []*string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalOString2ᚖstring(ctx, sel, v[i])
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v interface{}) (*string, error) {

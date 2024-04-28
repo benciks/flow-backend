@@ -18,6 +18,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/benciks/flow-backend/internal/database/db"
@@ -52,15 +53,10 @@ func (r *mutationResolver) TimeStart(ctx context.Context) (*model.TimeRecord, er
 		return nil, err
 	}
 
-	var timeRecord []TimeExport
+	var timeRecord []model.TimeRecord
 	err = json.Unmarshal(cmdOutput, &timeRecord)
 
-	return &model.TimeRecord{
-		ID:    "0",
-		Start: timeRecord[0].Start,
-		End:   timeRecord[0].End,
-		Tags:  timeRecord[0].Tags,
-	}, nil
+	return &timeRecord[0], nil
 }
 
 // TimeStop is the resolver for the timeStop field.
@@ -90,19 +86,14 @@ func (r *mutationResolver) TimeStop(ctx context.Context) (*model.TimeRecord, err
 		return nil, err
 	}
 
-	var timeRecord []TimeExport
+	var timeRecord []model.TimeRecord
 	err = json.Unmarshal(cmdOutput, &timeRecord)
 
-	return &model.TimeRecord{
-		ID:    "0",
-		Start: timeRecord[0].Start,
-		End:   timeRecord[0].End,
-		Tags:  timeRecord[0].Tags,
-	}, nil
+	return &timeRecord[0], nil
 }
 
 // DeleteTimeRecord is the resolver for the deleteTimeRecord field.
-func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id string) (*model.TimeRecord, error) {
+func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id int) (*model.TimeRecord, error) {
 	user, ok := middleware.GetUser(ctx)
 	if !ok {
 		return nil, msg.ErrUnauthorized
@@ -116,7 +107,7 @@ func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id string) (*mo
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
 	// First get the time record to be deleted
-	cmd := exec.Command("timew", "export", "@"+id)
+	cmd := exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
 	cmdOutput, err := cmd.Output()
 
@@ -124,26 +115,21 @@ func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id string) (*mo
 		return nil, err
 	}
 
-	var timeRecord []TimeExport
+	var timeRecord []model.TimeRecord
 	err = json.Unmarshal(cmdOutput, &timeRecord)
 
 	// Then delete it
-	cmd = exec.Command("timew", "delete", "@"+id)
+	cmd = exec.Command("timew", "delete", "@"+strconv.Itoa(id))
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
 
-	return &model.TimeRecord{
-		ID:    "-1",
-		Start: timeRecord[0].Start,
-		End:   timeRecord[0].End,
-		Tags:  timeRecord[0].Tags,
-	}, nil
+	return &timeRecord[0], nil
 }
 
 // ModifyTimeRecordDate is the resolver for the modifyTimeRecordDate field.
-func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id string, start *string, end *string) (*model.TimeRecord, error) {
+func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id int, start *string, end *string) (*model.TimeRecord, error) {
 	user, ok := middleware.GetUser(ctx)
 	if !ok {
 		return nil, msg.ErrUnauthorized
@@ -161,7 +147,7 @@ func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id string, 
 	}
 
 	if start != nil {
-		out := exec.Command("timew", "modify", "start", "@"+id, *start)
+		out := exec.Command("timew", "modify", "start", "@"+strconv.Itoa(id), *start)
 		out.Env = env
 		combinedOut, err := out.CombinedOutput()
 		// Return stderr if there is an error
@@ -171,7 +157,7 @@ func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id string, 
 	}
 
 	if end != nil {
-		cmd := exec.Command("timew", "modify", "end", "@"+id, *end)
+		cmd := exec.Command("timew", "modify", "end", "@"+strconv.Itoa(id), *end)
 		cmd.Env = env
 
 		if err := cmd.Run(); err != nil {
@@ -179,26 +165,21 @@ func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id string, 
 		}
 	}
 
-	cmd := exec.Command("timew", "export", "@"+id)
+	cmd := exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
 	cmdOutput, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
-	var timeRecord []TimeExport
+	var timeRecord []model.TimeRecord
 	err = json.Unmarshal(cmdOutput, &timeRecord)
 
-	return &model.TimeRecord{
-		ID:    id,
-		Start: timeRecord[0].Start,
-		End:   timeRecord[0].End,
-		Tags:  timeRecord[0].Tags,
-	}, nil
+	return &timeRecord[0], nil
 }
 
 // TagTimeRecord is the resolver for the tagTimeRecord field.
-func (r *mutationResolver) TagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error) {
+func (r *mutationResolver) TagTimeRecord(ctx context.Context, id int, tag string) (*model.TimeRecord, error) {
 	user, ok := middleware.GetUser(ctx)
 	if !ok {
 		return nil, msg.ErrUnauthorized
@@ -211,32 +192,27 @@ func (r *mutationResolver) TagTimeRecord(ctx context.Context, id string, tag str
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
-	cmd := exec.Command("timew", "tag", "@"+id, tag)
+	cmd := exec.Command("timew", "tag", "@"+strconv.Itoa(id), tag)
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
 
-	cmd = exec.Command("timew", "export", "@"+id)
+	cmd = exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
 	cmdOutput, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
-	var timeRecord []TimeExport
+	var timeRecord []*model.TimeRecord
 	err = json.Unmarshal(cmdOutput, &timeRecord)
 
-	return &model.TimeRecord{
-		ID:    id,
-		Start: timeRecord[0].Start,
-		End:   timeRecord[0].End,
-		Tags:  timeRecord[0].Tags,
-	}, nil
+	return timeRecord[0], nil
 }
 
 // UntagTimeRecord is the resolver for the untagTimeRecord field.
-func (r *mutationResolver) UntagTimeRecord(ctx context.Context, id string, tag string) (*model.TimeRecord, error) {
+func (r *mutationResolver) UntagTimeRecord(ctx context.Context, id int, tag string) (*model.TimeRecord, error) {
 	user, ok := middleware.GetUser(ctx)
 	if !ok {
 		return nil, msg.ErrUnauthorized
@@ -249,28 +225,23 @@ func (r *mutationResolver) UntagTimeRecord(ctx context.Context, id string, tag s
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
-	cmd := exec.Command("timew", "untag", "@"+id, tag)
+	cmd := exec.Command("timew", "untag", "@"+strconv.Itoa(id), tag)
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
 
-	cmd = exec.Command("timew", "export", "@"+id)
+	cmd = exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
 	cmdOutput, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
-	var timeRecord []TimeExport
+	var timeRecord []*model.TimeRecord
 	err = json.Unmarshal(cmdOutput, &timeRecord)
 
-	return &model.TimeRecord{
-		ID:    id,
-		Start: timeRecord[0].Start,
-		End:   timeRecord[0].End,
-		Tags:  timeRecord[0].Tags,
-	}, nil
+	return timeRecord[0], nil
 }
 
 // CreateTask is the resolver for the createTask field.
@@ -315,26 +286,14 @@ func (r *mutationResolver) CreateTask(ctx context.Context, description string, p
 		return nil, err
 	}
 
-	var taskExport []TaskExport
+	var taskExport []model.Task
 	err = json.Unmarshal(tasksOutput, &taskExport)
 
-	return &model.Task{
-		ID:          strconv.Itoa(taskExport[len(taskExport)-1].Id),
-		Description: taskExport[len(taskExport)-1].Description,
-		Entry:       taskExport[len(taskExport)-1].Entry,
-		Modified:    taskExport[len(taskExport)-1].Modified,
-		UUID:        taskExport[len(taskExport)-1].UUID,
-		Urgency:     taskExport[len(taskExport)-1].Urgency,
-		Status:      taskExport[len(taskExport)-1].Status,
-		Priority:    taskExport[len(taskExport)-1].Priority,
-		Due:         taskExport[len(taskExport)-1].Due,
-		Project:     taskExport[len(taskExport)-1].Project,
-		Tags:        taskExport[len(taskExport)-1].Tags,
-	}, nil
+	return &taskExport[len(taskExport)-1], nil
 }
 
 // MarkTaskDone is the resolver for the markTaskDone field.
-func (r *mutationResolver) MarkTaskDone(ctx context.Context, id string) (*model.Task, error) {
+func (r *mutationResolver) MarkTaskDone(ctx context.Context, id int) (*model.Task, error) {
 	user, ok := middleware.GetUser(ctx)
 	if !ok {
 		return nil, msg.ErrUnauthorized
@@ -357,38 +316,150 @@ func (r *mutationResolver) MarkTaskDone(ctx context.Context, id string) (*model.
 		return nil, err
 	}
 
-	var taskExport []TaskExport
+	var taskExport []model.Task
 	err = json.Unmarshal(tasksOutput, &taskExport)
 
 	// Find the task with the given id
-	var task TaskExport
+	var task model.Task
 	for _, t := range taskExport {
-		if strconv.Itoa(t.Id) == id {
+		if t.ID == id {
 			task = t
 			break
 		}
 	}
 
-	cmd := exec.Command("task", "done", id)
+	cmd := exec.Command("task", "done", strconv.Itoa(id))
 	cmd.Env = env
 	if err := cmd.Run(); err != nil {
 		return nil, err
 	}
 
-	// TODO: Cannot we make this nicer?
-	return &model.Task{
-		ID:          strconv.Itoa(task.Id),
-		Description: task.Description,
-		Entry:       task.Entry,
-		Modified:    task.Modified,
-		UUID:        task.UUID,
-		Urgency:     task.Urgency,
-		Status:      "completed",
-		Priority:    task.Priority,
-		Due:         task.Due,
-		Project:     task.Project,
-		Tags:        task.Tags,
-	}, nil
+	return &task, nil
+}
+
+// EditTask is the resolver for the editTask field.
+func (r *mutationResolver) EditTask(ctx context.Context, id int, description *string, project *string, priority *string, due *string, tags []*string) (*model.Task, error) {
+	user, ok := middleware.GetUser(ctx)
+	if !ok {
+		return nil, msg.ErrUnauthorized
+	}
+
+	// Sync after the task is edited
+	defer func() {
+		util.SyncTasks(ctx)
+	}()
+
+	// Set the environment variable for the task commands
+	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))
+	env = append(env, "TASKRC=./data/taskwarrior/"+strconv.FormatInt(user.ID, 10)+"/taskrc")
+
+	commandBuilder := []string{"modify", strconv.Itoa(id)}
+
+	if description != nil {
+		commandBuilder = append(commandBuilder, "description:"+*description)
+	}
+
+	if project != nil {
+		commandBuilder = append(commandBuilder, "project:"+*project)
+	}
+
+	if priority != nil {
+		commandBuilder = append(commandBuilder, "priority:"+*priority)
+	}
+
+	if due != nil {
+		commandBuilder = append(commandBuilder, "due:"+*due)
+	}
+
+	if tags != nil {
+		stringTags := make([]string, len(tags))
+		for i, tag := range tags {
+			stringTags[i] = *tag
+		}
+		tagsAll := strings.Join(stringTags, ",")
+		commandBuilder = append(commandBuilder, "tags:"+tagsAll)
+	}
+
+	cmd := exec.Command("task", commandBuilder...)
+	cmd.Env = env
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+
+	tasks := exec.Command("task", "export")
+	tasks.Env = env
+	tasksOutput, err := tasks.Output()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var taskExport []model.Task
+	err = json.Unmarshal(tasksOutput, &taskExport)
+
+	// Find by id
+	var task *model.Task
+	for _, t := range taskExport {
+		if t.ID == id {
+			task = &t
+			break
+		}
+	}
+
+	return task, nil
+}
+
+// DeleteTask is the resolver for the deleteTask field.
+func (r *mutationResolver) DeleteTask(ctx context.Context, id int) (*model.Task, error) {
+	user, ok := middleware.GetUser(ctx)
+	if !ok {
+		return nil, msg.ErrUnauthorized
+	}
+
+	// Sync after the task is deleted
+	defer func() {
+		util.SyncTasks(ctx)
+	}()
+
+	// Set the environment variable for the task commands
+	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))
+	env = append(env, "TASKRC=./data/taskwarrior/"+strconv.FormatInt(user.ID, 10)+"/taskrc")
+
+	tasks := exec.Command("task", "export")
+	tasks.Env = env
+	tasksOutput, err := tasks.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var taskExport []model.Task
+	err = json.Unmarshal(tasksOutput, &taskExport)
+
+	// Find the task with the given id
+	var task model.Task
+	for _, t := range taskExport {
+		if t.ID == id {
+			task = t
+			break
+		}
+	}
+
+	cmd := exec.Command("task", "delete", strconv.Itoa(id))
+	// Send yes to the prompt
+	stdin, _ := cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	cmd.Env = env
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("%s", out)
+	}
+
+	fmt.Println(out)
+
+	return &task, nil
 }
 
 // SignIn is the resolver for the signIn field.
@@ -792,8 +863,7 @@ func (r *mutationResolver) UploadTimeWarriorKey(ctx context.Context, key string)
 	cmd := exec.Command("timew-server", "add-key", "--path", currentDir+"/data/timewarrior/"+strconv.FormatInt(user.ID, 10)+"/public_key.pem", "--id", strconv.FormatInt(user.TimewID.Int64, 10))
 	cmd.Dir = cmdDir
 	cmd.Env = os.Environ()
-	out, err := cmd.CombinedOutput()
-	fmt.Println(string(out))
+	_, err = cmd.CombinedOutput()
 	if err != nil {
 		return false, err
 	}
@@ -829,25 +899,15 @@ func (r *queryResolver) TimeRecords(ctx context.Context) ([]*model.TimeRecord, e
 		Tags  []string
 	}
 
-	var timeRecords []Export
+	var timeRecords []*model.TimeRecord
 	err = json.Unmarshal(cmdOutput, &timeRecords)
 
-	var timeRecordsModel []*model.TimeRecord
-	for _, timeRecord := range timeRecords {
-		timeRecordsModel = append(timeRecordsModel, &model.TimeRecord{
-			ID:    strconv.Itoa(timeRecord.Id),
-			Start: timeRecord.Start,
-			End:   timeRecord.End,
-			Tags:  timeRecord.Tags,
-		})
+	// Reverse the order
+	for i, j := 0, len(timeRecords)-1; i < j; i, j = i+1, j-1 {
+		timeRecords[i], timeRecords[j] = timeRecords[j], timeRecords[i]
 	}
 
-	// Reverse the order of the time records
-	for i, j := 0, len(timeRecordsModel)-1; i < j; i, j = i+1, j-1 {
-		timeRecordsModel[i], timeRecordsModel[j] = timeRecordsModel[j], timeRecordsModel[i]
-	}
-
-	return timeRecordsModel, nil
+	return timeRecords, nil
 }
 
 // TimeTags is the resolver for the timeTags field.
@@ -890,27 +950,18 @@ func (r *queryResolver) Tasks(ctx context.Context) ([]*model.Task, error) {
 		return nil, err
 	}
 
-	var taskExport []TaskExport
-	err = json.Unmarshal(cmdOutput, &taskExport)
-
 	var tasks []*model.Task
-	for _, task := range taskExport {
-		tasks = append(tasks, &model.Task{
-			ID:          strconv.Itoa(task.Id),
-			Description: task.Description,
-			Entry:       task.Entry,
-			Modified:    task.Modified,
-			UUID:        task.UUID,
-			Urgency:     task.Urgency,
-			Status:      task.Status,
-			Priority:    task.Priority,
-			Due:         task.Due,
-			Project:     task.Project,
-			Tags:        task.Tags,
-		})
+	err = json.Unmarshal(cmdOutput, &tasks)
+
+	// Filter out the deleted tasks
+	var filteredTasks []*model.Task
+	for _, task := range tasks {
+		if task.Status != "deleted" {
+			filteredTasks = append(filteredTasks, task)
+		}
 	}
 
-	return tasks, nil
+	return filteredTasks, nil
 }
 
 // CreatedAt is the resolver for the createdAt field.
@@ -930,29 +981,3 @@ func (r *Resolver) User() UserResolver { return &userResolver{r} }
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
-
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//   - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//     it when you're done.
-//   - You have helper methods in this file. Move them out to keep these resolver files clean.
-type TimeExport struct {
-	Id    int
-	Start string
-	End   string
-	Tags  []string
-}
-type TaskExport struct {
-	Id          int
-	Description string
-	Entry       string
-	Modified    string
-	UUID        string
-	Urgency     float64
-	Status      string
-	Priority    string
-	Due         string
-	Project     string
-	Tags        []string
-}
