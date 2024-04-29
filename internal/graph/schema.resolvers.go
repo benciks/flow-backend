@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/benciks/flow-backend/internal/msg"
 	"github.com/benciks/flow-backend/internal/util"
 	gonanoid "github.com/matoous/go-nanoid/v2"
+	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -930,7 +932,7 @@ func (r *queryResolver) Me(ctx context.Context) (*db.User, error) {
 }
 
 // Tasks is the resolver for the tasks field.
-func (r *queryResolver) Tasks(ctx context.Context) ([]*model.Task, error) {
+func (r *queryResolver) Tasks(ctx context.Context, filter *model.TaskFilter) ([]*model.Task, error) {
 	user, ok := middleware.GetUser(ctx)
 	if !ok {
 		return nil, msg.ErrUnauthorized
@@ -953,15 +955,169 @@ func (r *queryResolver) Tasks(ctx context.Context) ([]*model.Task, error) {
 	var tasks []*model.Task
 	err = json.Unmarshal(cmdOutput, &tasks)
 
-	// Filter out the deleted tasks
-	var filteredTasks []*model.Task
+	// Filter the tasks
+	if filter != nil {
+		if filter.Status != nil {
+			var tempTasks []*model.Task
+			for _, task := range tasks {
+				if task.Status == *filter.Status {
+					tempTasks = append(tempTasks, task)
+				}
+			}
+			tasks = tempTasks
+		}
+
+		// Tags
+		if filter.Tags != nil && len(filter.Tags) > 0 {
+			var tempTasks []*model.Task
+			for _, task := range tasks {
+				for _, tag := range filter.Tags {
+					if slices.Contains(task.Tags, tag) {
+						tempTasks = append(tempTasks, task)
+						break
+					}
+				}
+			}
+			tasks = tempTasks
+		}
+
+		// Projects
+		if filter.Project != nil {
+			var tempTasks []*model.Task
+			for _, task := range tasks {
+				if task.Project == *filter.Project {
+					tempTasks = append(tempTasks, task)
+				}
+			}
+			tasks = tempTasks
+		}
+
+		// Priority
+		if filter.Priority != nil {
+			var tempTasks []*model.Task
+			for _, task := range tasks {
+				if task.Priority == *filter.Priority {
+					tempTasks = append(tempTasks, task)
+				}
+			}
+			tasks = tempTasks
+		}
+
+		// Due
+		if filter.Due != nil {
+			var tempTasks []*model.Task
+			for _, task := range tasks {
+				if task.Due == *filter.Due {
+					tempTasks = append(tempTasks, task)
+				}
+			}
+			tasks = tempTasks
+		}
+
+		// Ilike (description)
+		if filter.Description != nil {
+			var tempTasks []*model.Task
+			for _, task := range tasks {
+				if strings.Contains(task.Description, *filter.Description) {
+					tempTasks = append(tempTasks, task)
+				}
+			}
+			tasks = tempTasks
+		}
+
+	} else {
+		var tempTasks []*model.Task
+		for _, task := range tasks {
+			if task.Status != "deleted" {
+				tempTasks = append(tempTasks, task)
+			}
+		}
+		tasks = tempTasks
+	}
+
+	return tasks, nil
+}
+
+// RecentTaskProjects is the resolver for the recentTaskProjects field.
+func (r *queryResolver) RecentTaskProjects(ctx context.Context) ([]string, error) {
+	user, ok := middleware.GetUser(ctx)
+	if !ok {
+		return nil, msg.ErrUnauthorized
+	}
+
+	// Set the environment variable for the task commands
+	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))
+	env = append(env, "TASKRC=./data/taskwarrior/"+strconv.FormatInt(user.ID, 10)+"/taskrc")
+
+	cmd := exec.Command("task", "export")
+	cmd.Env = env
+	cmdOutput, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var tasks []*model.Task
+	err = json.Unmarshal(cmdOutput, &tasks)
+
+	projects := make(map[string]bool)
 	for _, task := range tasks {
-		if task.Status != "deleted" {
-			filteredTasks = append(filteredTasks, task)
+		projects[task.Project] = true
+	}
+
+	var projectList []string
+	for project := range projects {
+		projectList = append(projectList, project)
+	}
+
+	// Remove duplicates
+	projectList = lo.Uniq(projectList)
+
+	// Remove empty projects
+	projectList = lo.WithoutEmpty(projectList)
+
+	return projectList, nil
+}
+
+// RecentTaskTags is the resolver for the recentTaskTags field.
+func (r *queryResolver) RecentTaskTags(ctx context.Context) ([]string, error) {
+	user, ok := middleware.GetUser(ctx)
+	if !ok {
+		return nil, msg.ErrUnauthorized
+	}
+
+	// Set the environment variable for the task commands
+	env := append(os.Environ(), "TASKDATA=data/taskwarrior/"+strconv.FormatInt(user.ID, 10))
+	env = append(env, "TASKRC=./data/taskwarrior/"+strconv.FormatInt(user.ID, 10)+"/taskrc")
+
+	cmd := exec.Command("task", "export")
+	cmd.Env = env
+	cmdOutput, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	var tasks []*model.Task
+	err = json.Unmarshal(cmdOutput, &tasks)
+
+	tags := make(map[string]bool)
+	for _, task := range tasks {
+		for _, tag := range task.Tags {
+			tags[tag] = true
 		}
 	}
 
-	return filteredTasks, nil
+	var tagList []string
+	for tag := range tags {
+		tagList = append(tagList, tag)
+	}
+
+	// Remove duplicates
+	tagList = lo.Uniq(tagList)
+
+	// Remove empty tags
+	tagList = lo.WithoutEmpty(tagList)
+
+	return tagList, nil
 }
 
 // CreatedAt is the resolver for the createdAt field.

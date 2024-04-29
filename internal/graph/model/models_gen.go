@@ -31,6 +31,15 @@ type Task struct {
 	Tags        []string `json:"tags"`
 }
 
+type TaskFilter struct {
+	Status      *string  `json:"status,omitempty"`
+	Project     *string  `json:"project,omitempty"`
+	Priority    *string  `json:"priority,omitempty"`
+	Due         *string  `json:"due,omitempty"`
+	Tags        []string `json:"tags,omitempty"`
+	Description *string  `json:"description,omitempty"`
+}
+
 type TimeRecord struct {
 	ID    int      `json:"id"`
 	Start string   `json:"start"`

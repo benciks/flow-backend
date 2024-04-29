@@ -34,12 +34,23 @@ type SignInPayload {
   user: User!
 }
 
+input TaskFilter {
+  status: String
+  project: String
+  priority: String
+  due: String
+  tags: [String!]
+  description: String
+}
+
 type Query {
   timeRecords: [TimeRecord!]!
   timeTags: [String!]!
   me: User!
 
-  tasks: [Task!]!
+  tasks(filter: TaskFilter): [Task!]!
+  recentTaskProjects: [String!]!
+  recentTaskTags: [String!]!
 }
 
 type Mutation {
