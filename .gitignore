@@ -4,3 +4,5 @@ data/
 flow.db
 .env
 app/release
+authorized_keys/
+taskd/

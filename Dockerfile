@@ -1,7 +1,6 @@
 FROM alpine as base
 #enable the testing repository
 RUN echo "@testing http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-RUN apk add --no-cache chromium
 RUN apk add --no-cache ca-certificates postgresql-client curl tini bash gnupg taskd taskd-pki git task py3-pip
 
 # Install virtual environment package
