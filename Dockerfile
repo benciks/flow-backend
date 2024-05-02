@@ -67,6 +67,11 @@ ENV TASKDDATA=/app/taskd
 ENV TASKD_SERVER=localhost:53589
 ENV TIMEW_SERVER=http://localhost:8080
 ENV TIMEW_SYNC=/app/
+ENV CERT_ORGANIZATION = Flow
+ENV CERT_CN = benciks.me
+ENV CERT_COUNTRY = CZ
+ENV CERT_STATE = Jihomoravsky
+ENV CERT_LOCALITY = Brno
 
 # Init taskd server
 COPY --from=builder /app/setup/taskd.sh ./

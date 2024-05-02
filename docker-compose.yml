@@ -9,12 +9,6 @@ services:
       - ./authorized_keys:/app/authorized_keys
       - ./data:/app/data
       - ./taskd:/app/taskd
-    environment:
-      - CERT_ORGANIZATION = Flow
-      - CERT_CN = benciks.me
-      - CERT_COUNTRY = CZ
-      - CERT_STATE = Jihomoravsky
-      - CERT_LOCALITY = Brno
     ports:
       - "0.0.0.0:53589:53589"
       - "3000:3000"
