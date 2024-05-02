@@ -15,3 +15,6 @@ UPDATE users SET taskd_uuid = @uuid WHERE id = @id RETURNING *;
 
 -- name: SaveTimewID :one
 UPDATE users SET timew_id = @timew_id WHERE id = @id RETURNING *;
+
+-- name: SaveTimewHook :one
+UPDATE users SET timew_hook = @timew_hook WHERE id = @id RETURNING *;

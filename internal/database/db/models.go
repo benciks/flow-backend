@@ -22,4 +22,5 @@ type User struct {
 	CreatedAt sql.NullTime   `db:"created_at"`
 	TaskdUuid sql.NullString `db:"taskd_uuid"`
 	TimewID   sql.NullInt64  `db:"timew_id"`
+	TimewHook sql.NullBool   `db:"timew_hook"`
 }

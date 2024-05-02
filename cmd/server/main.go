@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"github.com/benciks/flow-backend/internal/database/db"
 	graph2 "github.com/benciks/flow-backend/internal/graph"
@@ -25,23 +24,12 @@ func main() {
 		port = defaultPort
 	}
 
-	conn, err := sql.Open("sqlite3", "./flow.db")
+	conn, err := sql.Open("sqlite3", "./data/flow.db")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer conn.Close()
-
-	// Migration
-	schemaFile, err := os.ReadFile("./internal/database/schema.sql")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ctx := context.Background()
-	if _, err := conn.ExecContext(ctx, string(schemaFile)); err != nil {
-		log.Fatal(err)
-	}
 
 	// Prepare data folders
 	if _, err := os.Stat("./data"); os.IsNotExist(err) {

@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./authorized_keys:/app/authorized_keys
+      - ./data:/app/data
+      - ./taskd:/app/taskd
+    ports:
+      - "53589:53589"
+      - "3000:3000"
+      - "8080:8080"

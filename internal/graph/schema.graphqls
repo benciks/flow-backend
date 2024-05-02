@@ -20,13 +20,20 @@ type Task {
   due: String!
   project: String!
   tags: [String!]!
+  start: String
+  depends: [String!]!
+  parent: String
+  recur: String
+  until: String
 }
 
 type User {
   id: ID!
   username: String!
   password: String!
-  createdAt: Time!
+  timewId: String!
+  taskdUuid: String!
+  timewHook: Boolean!
 }
 
 type SignInPayload {
@@ -63,11 +70,14 @@ type Mutation {
 
   createTask(description: String!, project: String, priority: String, due: String): Task!
   markTaskDone(id: ID!): Task!
-  editTask(id: ID!, description: String, project: String, priority: String, due: String, tags: [String]): Task!
+  editTask(id: ID!, description: String, project: String, priority: String, due: String, tags: [String], depends: [String], recurring: String, until: String): Task!
+  startTask(id: ID!): Task!
+  stopTask(id: ID!): Task!
   deleteTask(id: ID!): Task!
 
   signIn(username: String!, password: String!): SignInPayload!
   signUp(username: String!, password: String!): SignInPayload!
+  setTimewHook(enabled: Boolean!): Boolean!
   signOut: Boolean!
 
   downloadTaskKeys: String!

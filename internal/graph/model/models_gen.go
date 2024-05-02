@@ -29,6 +29,11 @@ type Task struct {
 	Due         string   `json:"due"`
 	Project     string   `json:"project"`
 	Tags        []string `json:"tags"`
+	Start       *string  `json:"start,omitempty"`
+	Depends     []string `json:"depends"`
+	Parent      *string  `json:"parent,omitempty"`
+	Recur       *string  `json:"recur,omitempty"`
+	Until       *string  `json:"until,omitempty"`
 }
 
 type TaskFilter struct {

@@ -11,7 +11,7 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (password, username) VALUES (?1, ?2) RETURNING id, username, password, created_at, taskd_uuid, timew_id
+INSERT INTO users (password, username) VALUES (?1, ?2) RETURNING id, username, password, created_at, taskd_uuid, timew_id, timew_hook
 `
 
 type CreateUserParams struct {
@@ -29,12 +29,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.TaskdUuid,
 		&i.TimewID,
+		&i.TimewHook,
 	)
 	return i, err
 }
 
 const findUserById = `-- name: FindUserById :one
-SELECT id, username, password, created_at, taskd_uuid, timew_id FROM users WHERE id = ?1
+SELECT id, username, password, created_at, taskd_uuid, timew_id, timew_hook FROM users WHERE id = ?1
 `
 
 func (q *Queries) FindUserById(ctx context.Context, id int64) (User, error) {
@@ -47,12 +48,13 @@ func (q *Queries) FindUserById(ctx context.Context, id int64) (User, error) {
 		&i.CreatedAt,
 		&i.TaskdUuid,
 		&i.TimewID,
+		&i.TimewHook,
 	)
 	return i, err
 }
 
 const findUserByUsername = `-- name: FindUserByUsername :one
-SELECT id, username, password, created_at, taskd_uuid, timew_id FROM users WHERE username = ?1
+SELECT id, username, password, created_at, taskd_uuid, timew_id, timew_hook FROM users WHERE username = ?1
 `
 
 func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User, error) {
@@ -65,12 +67,13 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (User
 		&i.CreatedAt,
 		&i.TaskdUuid,
 		&i.TimewID,
+		&i.TimewHook,
 	)
 	return i, err
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, username, password, created_at, taskd_uuid, timew_id FROM users
+SELECT id, username, password, created_at, taskd_uuid, timew_id, timew_hook FROM users
 `
 
 func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
@@ -89,6 +92,7 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 			&i.CreatedAt,
 			&i.TaskdUuid,
 			&i.TimewID,
+			&i.TimewHook,
 		); err != nil {
 			return nil, err
 		}
@@ -103,8 +107,32 @@ func (q *Queries) GetUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const saveTimewHook = `-- name: SaveTimewHook :one
+UPDATE users SET timew_hook = ?1 WHERE id = ?2 RETURNING id, username, password, created_at, taskd_uuid, timew_id, timew_hook
+`
+
+type SaveTimewHookParams struct {
+	TimewHook sql.NullBool `db:"timew_hook"`
+	ID        int64        `db:"id"`
+}
+
+func (q *Queries) SaveTimewHook(ctx context.Context, arg SaveTimewHookParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, saveTimewHook, arg.TimewHook, arg.ID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Password,
+		&i.CreatedAt,
+		&i.TaskdUuid,
+		&i.TimewID,
+		&i.TimewHook,
+	)
+	return i, err
+}
+
 const saveTimewID = `-- name: SaveTimewID :one
-UPDATE users SET timew_id = ?1 WHERE id = ?2 RETURNING id, username, password, created_at, taskd_uuid, timew_id
+UPDATE users SET timew_id = ?1 WHERE id = ?2 RETURNING id, username, password, created_at, taskd_uuid, timew_id, timew_hook
 `
 
 type SaveTimewIDParams struct {
@@ -122,12 +150,13 @@ func (q *Queries) SaveTimewID(ctx context.Context, arg SaveTimewIDParams) (User,
 		&i.CreatedAt,
 		&i.TaskdUuid,
 		&i.TimewID,
+		&i.TimewHook,
 	)
 	return i, err
 }
 
 const saveUserUUID = `-- name: SaveUserUUID :one
-UPDATE users SET taskd_uuid = ?1 WHERE id = ?2 RETURNING id, username, password, created_at, taskd_uuid, timew_id
+UPDATE users SET taskd_uuid = ?1 WHERE id = ?2 RETURNING id, username, password, created_at, taskd_uuid, timew_id, timew_hook
 `
 
 type SaveUserUUIDParams struct {
@@ -145,6 +174,7 @@ func (q *Queries) SaveUserUUID(ctx context.Context, arg SaveUserUUIDParams) (Use
 		&i.CreatedAt,
 		&i.TaskdUuid,
 		&i.TimewID,
+		&i.TimewHook,
 	)
 	return i, err
 }
