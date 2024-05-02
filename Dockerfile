@@ -64,7 +64,7 @@ RUN touch .env
 RUN mkdir -p ./authorized_keys
 
 ENV TASKDDATA=/app/taskd
-ENV TASKD_SERVER=benciks.me:53589
+ENV TASKD_SERVER=0.0.0.0:53589
 ENV TIMEW_SERVER=http://localhost:8080
 ENV TIMEW_SYNC=/app/
 ENV CERT_ORGANIZATION = Flow
