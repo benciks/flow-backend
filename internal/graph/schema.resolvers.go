@@ -1112,7 +1112,7 @@ func (r *mutationResolver) UploadTimeWarriorKey(ctx context.Context, key string)
 	if err != nil {
 		return false, err
 	}
-	cmd := exec.Command("timew-server", "add-key", "--path", currentDir+"/data/timewarrior/"+strconv.FormatInt(user.ID, 10)+"/public_key.pem", "--id", strconv.FormatInt(user.TimewID.Int64, 10))
+	cmd := exec.Command("./timew-server", "add-key", "--path", currentDir+"/data/timewarrior/"+strconv.FormatInt(user.ID, 10)+"/public_key.pem", "--id", strconv.FormatInt(user.TimewID.Int64, 10))
 	cmd.Dir = cmdDir
 	cmd.Env = os.Environ()
 	_, err = cmd.CombinedOutput()
