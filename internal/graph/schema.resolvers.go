@@ -18,6 +18,7 @@ import (
 	"github.com/benciks/flow-backend/internal/middleware"
 	"github.com/benciks/flow-backend/internal/msg"
 	"github.com/benciks/flow-backend/internal/util"
+	"github.com/labstack/gommon/log"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
@@ -42,14 +43,17 @@ func (r *mutationResolver) TimeStart(ctx context.Context) (*model.TimeRecord, er
 
 	cmd := exec.Command("timew", "start")
 	cmd.Env = env
-	if err := cmd.Run(); err != nil {
+	cmdOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
 	cmd = exec.Command("timew", "export", "@1")
 	cmd.Env = env
-	cmdOutput, err := cmd.Output()
+	cmdOutput, err = cmd.Output()
 	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -75,14 +79,17 @@ func (r *mutationResolver) TimeStop(ctx context.Context) (*model.TimeRecord, err
 
 	cmd := exec.Command("timew", "stop")
 	cmd.Env = env
-	if err := cmd.Run(); err != nil {
+	cmdOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
 	cmd = exec.Command("timew", "export", "@1")
 	cmd.Env = env
-	cmdOutput, err := cmd.Output()
+	cmdOutput, err = cmd.Output()
 	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -109,9 +116,10 @@ func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id int) (*model
 	// First get the time record to be deleted
 	cmd := exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
-	cmdOutput, err := cmd.Output()
+	cmdOutput, err := cmd.CombinedOutput()
 
 	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -121,7 +129,9 @@ func (r *mutationResolver) DeleteTimeRecord(ctx context.Context, id int) (*model
 	// Then delete it
 	cmd = exec.Command("timew", "delete", "@"+strconv.Itoa(id))
 	cmd.Env = env
-	if err := cmd.Run(); err != nil {
+	cmdOutput, err = cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -152,7 +162,8 @@ func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id int, sta
 		combinedOut, err := out.CombinedOutput()
 		// Return stderr if there is an error
 		if err != nil {
-			return nil, fmt.Errorf("%s", combinedOut)
+			log.Print(string(combinedOut))
+			return nil, err
 		}
 	}
 
@@ -160,15 +171,18 @@ func (r *mutationResolver) ModifyTimeRecordDate(ctx context.Context, id int, sta
 		cmd := exec.Command("timew", "modify", "end", "@"+strconv.Itoa(id), *end)
 		cmd.Env = env
 
-		if err := cmd.Run(); err != nil {
+		cmdOutput, err := cmd.CombinedOutput()
+		if err != nil {
+			log.Print(string(cmdOutput))
 			return nil, err
 		}
 	}
 
 	cmd := exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
-	cmdOutput, err := cmd.Output()
+	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -194,14 +208,17 @@ func (r *mutationResolver) TagTimeRecord(ctx context.Context, id int, tag string
 
 	cmd := exec.Command("timew", "tag", "@"+strconv.Itoa(id), tag)
 	cmd.Env = env
-	if err := cmd.Run(); err != nil {
+	cmdOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
 	cmd = exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
-	cmdOutput, err := cmd.Output()
+	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -227,14 +244,17 @@ func (r *mutationResolver) UntagTimeRecord(ctx context.Context, id int, tag stri
 
 	cmd := exec.Command("timew", "untag", "@"+strconv.Itoa(id), tag)
 	cmd.Env = env
-	if err := cmd.Run(); err != nil {
+	cmdOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
 	cmd = exec.Command("timew", "export", "@"+strconv.Itoa(id))
 	cmd.Env = env
-	cmdOutput, err := cmd.Output()
+	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -278,13 +298,15 @@ func (r *mutationResolver) CreateTask(ctx context.Context, description string, p
 	cmd.Env = env
 	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	tasks := exec.Command("task", "export")
 	tasks.Env = env
 	tasksOutput, err := tasks.Output()
 	if err != nil {
+		log.Print(string(tasksOutput))
 		return nil, err
 	}
 
@@ -332,7 +354,9 @@ func (r *mutationResolver) MarkTaskDone(ctx context.Context, id int) (*model.Tas
 
 	cmd := exec.Command("task", "done", strconv.Itoa(id))
 	cmd.Env = env
-	if err := cmd.Run(); err != nil {
+	cmdOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
 
@@ -410,7 +434,8 @@ func (r *mutationResolver) EditTask(ctx context.Context, id int, description *st
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(out))
+		log.Print(string(out))
+		return nil, err
 	}
 
 	tasks := exec.Command("task", "export")
@@ -418,6 +443,7 @@ func (r *mutationResolver) EditTask(ctx context.Context, id int, description *st
 	tasksOutput, err := tasks.Output()
 
 	if err != nil {
+		log.Print(string(tasksOutput))
 		return nil, err
 	}
 
@@ -454,8 +480,9 @@ func (r *mutationResolver) StartTask(ctx context.Context, id int) (*model.Task, 
 
 	cmd := exec.Command("task", "start", strconv.Itoa(id))
 	cmd.Env = env
-	_, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
+		log.Print(out)
 		return nil, err
 	}
 
@@ -464,6 +491,7 @@ func (r *mutationResolver) StartTask(ctx context.Context, id int) (*model.Task, 
 	tasksOutput, err := tasks.Output()
 
 	if err != nil {
+		log.Print(string(tasksOutput))
 		return nil, err
 	}
 
@@ -522,15 +550,16 @@ func (r *mutationResolver) StopTask(ctx context.Context, id int) (*model.Task, e
 	cmd.Env = env
 	cmdOutput, err := cmd.Output()
 	if err != nil {
+		log.Print(string(cmdOutput))
 		return nil, err
 	}
-	fmt.Println(cmdOutput)
 
 	tasks := exec.Command("task", "export")
 	tasks.Env = env
 	tasksOutput, err := tasks.Output()
 
 	if err != nil {
+		log.Print(string(tasksOutput))
 		return nil, err
 	}
 
@@ -576,6 +605,7 @@ func (r *mutationResolver) DeleteTask(ctx context.Context, id int) (*model.Task,
 	tasks.Env = env
 	tasksOutput, err := tasks.Output()
 	if err != nil {
+		log.Print(string(tasksOutput))
 		return nil, err
 	}
 
@@ -601,7 +631,8 @@ func (r *mutationResolver) DeleteTask(ctx context.Context, id int) (*model.Task,
 	cmd.Env = env
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("%s", out)
+		log.Print(string(out))
+		return nil, err
 	}
 
 	return &task, nil
@@ -706,7 +737,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	cmd.Env = os.Environ()
 	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Extract user uuid from output
@@ -731,26 +763,30 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	cmd.Env = os.Environ()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Copy the generated keys to the user's folder
 	cmd = exec.Command("cp", fmt.Sprintf("%s/%s.cert.pem", cmdDir, username), fmt.Sprintf("./data/taskwarrior/%d/%s.cert.pem", user.ID, username))
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 	cmd = exec.Command("cp", fmt.Sprintf("%s/%s.key.pem", cmdDir, username), fmt.Sprintf("./data/taskwarrior/%d/%s.key.pem", user.ID, username))
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Copy the ca.cert.pem to the user's folder
 	cmd = exec.Command("cp", fmt.Sprintf("%s/ca.cert.pem", cmdDir), fmt.Sprintf("./data/taskwarrior/%d/ca.cert.pem", user.ID))
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Setup taskwarrior for the user
@@ -767,7 +803,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	cmd = exec.Command("task", "config", "taskd.credentials", "Public/"+username+"/"+userUUID)
@@ -779,7 +816,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	cmd = exec.Command("task", "config", "taskd.key", fmt.Sprintf("./data/taskwarrior/%d/%s.key.pem", user.ID, username))
@@ -791,7 +829,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	cmd = exec.Command("task", "config", "taskd.certificate", fmt.Sprintf("./data/taskwarrior/%d/%s.cert.pem", user.ID, username))
@@ -803,7 +842,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	cmd = exec.Command("task", "config", "taskd.ca", fmt.Sprintf("./data/taskwarrior/%d/ca.cert.pem", user.ID))
@@ -815,7 +855,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	cmd = exec.Command("task", "config", "taskd.trust", "ignore hostname")
@@ -827,7 +868,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Sync the user
@@ -840,7 +882,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Setup timewsync for user
@@ -851,7 +894,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	cmd.Env = os.Environ()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Parse the id from the output
@@ -889,7 +933,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	cmd.Env = os.Environ()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Add the user key to the server
@@ -902,7 +947,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	cmd.Env = os.Environ()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	// Sync the user
@@ -910,7 +956,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	cmd.Env = os.Environ()
 	cmdOutput, err = cmd.CombinedOutput()
 	if err != nil {
-		return nil, errors.New(string(cmdOutput))
+		log.Print(string(cmdOutput))
+		return nil, err
 	}
 
 	return &model.SignInPayload{
