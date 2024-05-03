@@ -718,8 +718,11 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 
 	_, err = r.DB.SaveUserUUID(ctx, db.SaveUserUUIDParams{
 		ID:   user.ID,
-		Uuid: sql.NullString{String: userUUID},
+		Uuid: sql.NullString{String: userUUID, Valid: true},
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Generate keys for the user
 	cmdDir := filepath.Join(os.Getenv("TASKDDATA"), "pki")
@@ -804,6 +807,18 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 	}
 
 	cmd = exec.Command("task", "config", "taskd.ca", fmt.Sprintf("./data/taskwarrior/%d/ca.cert.pem", user.ID))
+	cmd.Env = env
+	stdin, _ = cmd.StdinPipe()
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, "yes\n")
+	}()
+	cmdOutput, err = cmd.CombinedOutput()
+	if err != nil {
+		return nil, errors.New(string(cmdOutput))
+	}
+
+	cmd = exec.Command("task", "config", "taskd.trust", "ignore hostname")
 	cmd.Env = env
 	stdin, _ = cmd.StdinPipe()
 	go func() {
