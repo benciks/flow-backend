@@ -644,6 +644,10 @@ func (r *mutationResolver) SignIn(ctx context.Context, username string, password
 		return nil, msg.ErrInvalidEmailOrPassword
 	}
 
+	if (password == "") || (username == "") {
+		return nil, errors.New("username and password cannot be empty")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
 		return nil, msg.ErrInvalidEmailOrPassword
 	}
@@ -678,6 +682,13 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 		return nil, msg.ErrUserExists
 	}
 
+	if (password == "") || (username == "") {
+		return nil, errors.New("username and password cannot be empty")
+	}
+
+	if len(password) < 8 {
+		return nil, errors.New("password must be at least 8 characters long")
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
