@@ -202,6 +202,10 @@ func (r *mutationResolver) TagTimeRecord(ctx context.Context, id int, tag string
 		go util.SyncTimewarrior(ctx)
 	}()
 
+	if tag == "" || tag == " " {
+		return nil, errors.New("tag cannot be empty")
+	}
+
 	// Set the environment variable for the timew commands
 	env := append(os.Environ(), "TIMEWARRIORDB=./data/timewarrior/"+strconv.FormatInt(user.ID, 10))
 
@@ -425,6 +429,8 @@ func (r *mutationResolver) EditTask(ctx context.Context, id int, description *st
 		for i, tag := range tags {
 			stringTags[i] = *tag
 		}
+		// Remove empty tags
+		stringTags = lo.Uniq(stringTags)
 		tagsAll := strings.Join(stringTags, ",")
 		commandBuilder = append(commandBuilder, "tags:"+tagsAll)
 	}
