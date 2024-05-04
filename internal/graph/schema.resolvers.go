@@ -686,6 +686,11 @@ func (r *mutationResolver) SignUp(ctx context.Context, username string, password
 		return nil, errors.New("username and password cannot be empty")
 	}
 
+	// If username contains a space, return an error
+	if strings.Contains(username, " ") {
+		return nil, errors.New("username cannot contain a space")
+	}
+
 	if len(password) < 8 {
 		return nil, errors.New("password must be at least 8 characters long")
 	}
