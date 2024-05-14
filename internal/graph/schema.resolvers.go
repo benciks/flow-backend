@@ -13,6 +13,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"slices"
+	"strconv"
+	"strings"
+
 	"github.com/benciks/flow-backend/internal/database/db"
 	"github.com/benciks/flow-backend/internal/graph/model"
 	"github.com/benciks/flow-backend/internal/middleware"
@@ -21,13 +29,6 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"github.com/samber/lo"
 	"golang.org/x/crypto/bcrypt"
-	"io"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"slices"
-	"strconv"
-	"strings"
 )
 
 // TimeStart is the resolver for the timeStart field.
@@ -591,7 +592,7 @@ func (r *mutationResolver) StopTask(ctx context.Context, id int) (*model.Task, e
 }
 
 // DeleteTask is the resolver for the deleteTask field.
-func (r *mutationResolver) DeleteTask(ctx context.Context, id int) (*model.Task, error) {
+func (r *mutationResolver) DeleteTask(ctx context.Context, id string) (*model.Task, error) {
 	user, ok := middleware.GetUser(ctx)
 	if !ok {
 		return nil, msg.ErrUnauthorized
@@ -620,13 +621,30 @@ func (r *mutationResolver) DeleteTask(ctx context.Context, id int) (*model.Task,
 	// Find the task with the given id
 	var task model.Task
 	for _, t := range taskExport {
-		if t.ID == id {
+		if t.UUID == id {
 			task = t
 			break
 		}
 	}
 
-	cmd := exec.Command("task", "delete", strconv.Itoa(id))
+	// if task is already deleted, purge it
+	if task.Status == "deleted" {
+		cmd := exec.Command("task", "purge", id)
+		stdin, _ := cmd.StdinPipe()
+		go func() {
+			defer stdin.Close()
+			io.WriteString(stdin, "yes\n")
+		}()
+		cmd.Env = env
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println(string(out))
+			return nil, err
+		}
+
+		return &task, nil
+	}
+	cmd := exec.Command("task", "delete", id)
 	// Send yes to the prompt
 	stdin, _ := cmd.StdinPipe()
 	go func() {

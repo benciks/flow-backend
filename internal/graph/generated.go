@@ -51,7 +51,7 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Mutation struct {
 		CreateTask           func(childComplexity int, description string, project *string, priority *string, due *string) int
-		DeleteTask           func(childComplexity int, id int) int
+		DeleteTask           func(childComplexity int, id string) int
 		DeleteTimeRecord     func(childComplexity int, id int) int
 		DownloadTaskKeys     func(childComplexity int) int
 		EditTask             func(childComplexity int, id int, description *string, project *string, priority *string, due *string, tags []*string, depends []*string, recurring *string, until *string) int
@@ -132,7 +132,7 @@ type MutationResolver interface {
 	EditTask(ctx context.Context, id int, description *string, project *string, priority *string, due *string, tags []*string, depends []*string, recurring *string, until *string) (*model.Task, error)
 	StartTask(ctx context.Context, id int) (*model.Task, error)
 	StopTask(ctx context.Context, id int) (*model.Task, error)
-	DeleteTask(ctx context.Context, id int) (*model.Task, error)
+	DeleteTask(ctx context.Context, id string) (*model.Task, error)
 	SignIn(ctx context.Context, username string, password string) (*model.SignInPayload, error)
 	SignUp(ctx context.Context, username string, password string) (*model.SignInPayload, error)
 	SetTimewHook(ctx context.Context, enabled bool) (bool, error)
@@ -195,7 +195,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.DeleteTask(childComplexity, args["id"].(int)), true
+		return e.complexity.Mutation.DeleteTask(childComplexity, args["id"].(string)), true
 
 	case "Mutation.deleteTimeRecord":
 		if e.complexity.Mutation.DeleteTimeRecord == nil {
@@ -782,10 +782,10 @@ func (ec *executionContext) field_Mutation_createTask_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_deleteTask_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 int
+	var arg0 string
 	if tmp, ok := rawArgs["id"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2int(ctx, tmp)
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -1995,7 +1995,7 @@ func (ec *executionContext) _Mutation_deleteTask(ctx context.Context, field grap
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DeleteTask(rctx, fc.Args["id"].(int))
+		return ec.resolvers.Mutation().DeleteTask(rctx, fc.Args["id"].(string))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

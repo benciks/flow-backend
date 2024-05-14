@@ -73,7 +73,7 @@ type Mutation {
   editTask(id: ID!, description: String, project: String, priority: String, due: String, tags: [String], depends: [String], recurring: String, until: String): Task!
   startTask(id: ID!): Task!
   stopTask(id: ID!): Task!
-  deleteTask(id: ID!): Task!
+  deleteTask(id: String!): Task!
 
   signIn(username: String!, password: String!): SignInPayload!
   signUp(username: String!, password: String!): SignInPayload!
